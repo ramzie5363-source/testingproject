@@ -1,0 +1,883 @@
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-VTCZ2KKJXH"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-VTCZ2KKJXH');
+</script>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSV to GPX Converter — AeroTrack</title>
+<meta name="description" content="Convert DJI drone flight-log CSVs into SMART-ready GPX tracks, right in your browser.">
+
+<link rel="stylesheet" href="../assets/site.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<style>
+  :root{
+    --sky: #eaf3fc;
+    --white: #ffffff;
+    --navy: #10233f;
+    --blue: #2e74e0;
+    --blue-dark: #1e5cc2;
+    --blue-soft: #dcebfc;
+    --green: #2fa671;
+    --green-soft: #e1f5ea;
+    --amber: #f2a93b;
+    --amber-soft: #fdf0da;
+    --text: #1c2b3f;
+    --text-dim: #55677e;
+    --border: #e1e9f5;
+    --bad: #e0563f;
+    --head: "Space Grotesk", ui-sans-serif, sans-serif;
+    --body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --mono: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  }
+  *{ box-sizing: border-box; }
+  html, body{
+    margin: 0;
+    padding: 0;
+    background: var(--sky);
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  h1, h2, h3{ font-family: var(--head); margin: 0; color: var(--navy); }
+  a{ color: inherit; }
+  .container{ max-width: 1040px; margin: 0 auto; padding: 0 24px; }
+
+  /* ---------- nav ---------- */
+  nav.topnav{
+    display: flex; align-items: center; gap: 28px;
+    padding: 18px 24px;
+    max-width: 1040px; margin: 0 auto;
+  }
+  .brand{ display: flex; align-items: center; gap: 9px; font-family: var(--head); font-weight: 700; font-size: 17px; color: var(--navy); }
+  .brand svg{ width: 26px; height: 26px; }
+  .navlinks{ display: flex; gap: 22px; margin-left: 8px; font-size: 14px; font-weight: 500; color: var(--text-dim); }
+  .navlinks a{ text-decoration: none; }
+  .navlinks a:hover{ color: var(--navy); }
+  .navcta{
+    margin-left: auto;
+    background: var(--blue); color: #fff; text-decoration: none;
+    font-weight: 600; font-size: 13.5px; padding: 9px 18px; border-radius: 8px;
+  }
+  .navcta:hover{ background: var(--blue-dark); }
+
+  /* ---------- hero ---------- */
+  .hero{ padding: 36px 0 64px; }
+  .hero-inner{ display: flex; align-items: center; gap: 40px; }
+  .hero-copy{ flex: 1; min-width: 280px; }
+  .hero-copy h1{ font-size: 38px; line-height: 1.18; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 14px; }
+  .hero-copy h1 .accent{ color: var(--blue); }
+  .hero-copy p{ font-size: 15.5px; color: var(--text-dim); max-width: 46ch; margin-bottom: 26px; }
+  .hero-actions{ display: flex; align-items: center; gap: 18px; }
+  .btn-primary{
+    display: inline-block; background: var(--blue); color: #fff; text-decoration: none;
+    font-weight: 600; font-size: 14.5px; padding: 13px 24px; border-radius: 9px; border: none; cursor: pointer;
+  }
+  .btn-primary:hover{ background: var(--blue-dark); }
+  .link-secondary{ font-weight: 600; font-size: 14px; color: var(--navy); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+  .link-secondary:hover{ color: var(--blue); }
+
+  .hero-art{ position: relative; flex: 1; min-width: 280px; height: 280px; }
+  .hero-art .dot{ position: absolute; border-radius: 50%; }
+  .hero-art svg{ position: absolute; }
+
+  /* ---------- how it works ---------- */
+  .how{ padding: 20px 0 60px; }
+  .section-head{ text-align: left; margin-bottom: 26px; }
+  .section-head h2{ font-size: 24px; font-weight: 700; margin-bottom: 6px; }
+  .section-head p{ color: var(--text-dim); font-size: 14.5px; margin: 0; }
+  .how-grid{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .how-card{
+    background: var(--white); border: 1px solid var(--border); border-radius: 14px;
+    padding: 20px 18px; display: flex; flex-direction: column; gap: 12px;
+  }
+  .how-icon{
+    width: 38px; height: 38px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .how-card h3{ font-size: 14.5px; font-weight: 650; }
+  .how-card p{ font-size: 13px; color: var(--text-dim); margin: 0; line-height: 1.45; }
+
+  /* ---------- tool section ---------- */
+  .tool{ padding: 10px 0 60px; }
+  .tool-shell{
+    background: var(--white); border: 1px solid var(--border); border-radius: 18px;
+    padding: 8px; box-shadow: 0 12px 34px rgba(16,35,63,0.06);
+  }
+  .tool-head{
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 20px 14px;
+  }
+  .tool-head h2{ font-size: 19px; }
+  .status-pill{
+    font-size: 12.5px; font-weight: 600; padding: 5px 12px; border-radius: 999px;
+    background: var(--blue-soft); color: var(--blue-dark);
+  }
+  .status-pill.ready{ background: var(--green-soft); color: var(--green); }
+  .status-pill.warn{ background: var(--amber-soft); color: #a06a0f; }
+  .status-pill.err{ background: #fbe4de; color: var(--bad); }
+
+  .step{ border-top: 1px solid var(--border); padding: 22px 20px; }
+  .step-title-row{ display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .step-badge{
+    width: 24px; height: 24px; border-radius: 50%; background: var(--blue-soft); color: var(--blue-dark);
+    font-family: var(--head); font-weight: 700; font-size: 12px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .step-title{ font-weight: 650; font-size: 14.5px; }
+  .step-sub{ margin-left: auto; font-size: 12px; color: var(--text-dim); }
+
+  .dropzone{
+    border: 1.5px dashed var(--border); border-radius: 12px; background: var(--sky);
+    padding: 30px 16px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s;
+  }
+  .dropzone:hover, .dropzone.drag{ border-color: var(--blue); background: var(--blue-soft); }
+  .dropzone .icon{ width: 40px; height: 40px; margin: 0 auto 10px; }
+  .dropzone .big{ font-size: 14px; font-weight: 600; color: var(--navy); margin-bottom: 3px; }
+  .dropzone .small{ font-size: 12.5px; color: var(--text-dim); }
+  input[type=file]{ display: none; }
+
+  .filelist{ margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .filecard{ border: 1px solid var(--border); border-radius: 10px; background: var(--sky); padding: 11px 14px; }
+  .filecard-row{ display: flex; align-items: center; gap: 10px; }
+  .filecard-name{ font-size: 13px; font-weight: 550; color: var(--navy); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .filecard-meta{ font-size: 12px; color: var(--text-dim); margin-left: auto; white-space: nowrap; }
+  .filecard-remove{ background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 15px; line-height: 1; padding: 2px 4px; }
+  .filecard-remove:hover{ color: var(--bad); }
+
+  .mapgrid{ display: grid; grid-template-columns: 92px 1fr; gap: 9px 10px; margin-top: 10px; }
+  .mapgrid label{ font-size: 12.5px; color: var(--text-dim); align-self: center; }
+  .mapgrid select{
+    background: #fff; color: var(--text); border: 1px solid var(--border);
+    border-radius: 7px; padding: 7px 9px; font-size: 13px; width: 100%;
+  }
+  .mapgrid select.missing{ border-color: var(--bad); }
+  .warn-inline{ font-size: 12px; color: var(--bad); margin-top: 4px; grid-column: 1 / -1; }
+
+  .settings-row{ display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .settings-row:last-child{ margin-bottom: 0; }
+  .settings-row label.field-label{ width: 190px; flex-shrink: 0; font-size: 13.5px; color: var(--text); font-weight: 550; }
+  .settings-row input[type=text]{
+    background: #fff; border: 1px solid var(--border); color: var(--text);
+    font-size: 13.5px; padding: 8px 10px; border-radius: 7px; flex: 1;
+  }
+  .settings-row .hint{ font-size: 12.5px; color: var(--text-dim); margin-top: 3px; }
+  .toggle-row{ display: flex; align-items: flex-start; gap: 10px; }
+  .toggle-row input[type=checkbox]{ margin-top: 3px; accent-color: var(--blue); width: 15px; height: 15px; }
+  .toggle-text{ font-size: 13.5px; font-weight: 550; }
+  .toggle-text .hint{ font-size: 12.5px; color: var(--text-dim); font-weight: 400; margin-top: 2px; }
+
+  button.primary{
+    background: var(--blue); color: #fff; border: none; font-weight: 650; font-size: 13.5px;
+    padding: 11px 20px; border-radius: 9px; cursor: pointer;
+  }
+  button.primary:disabled{ background: var(--border); color: var(--text-dim); cursor: not-allowed; }
+  button.primary:not(:disabled):hover{ background: var(--blue-dark); }
+  button.secondary{
+    background: #fff; color: var(--text-dim); border: 1px solid var(--border);
+    font-size: 13px; font-weight: 550; padding: 10px 16px; border-radius: 9px; cursor: pointer;
+  }
+  button.secondary:hover{ border-color: var(--text-dim); color: var(--navy); }
+
+  .console{
+    font-family: var(--mono); font-size: 12px; line-height: 1.7;
+    background: var(--navy); color: #cfe0f7; border-radius: 10px;
+    padding: 12px 14px; margin-top: 14px; max-height: 240px; overflow-y: auto; white-space: pre-wrap;
+  }
+  .console .ts{ color: #6f88a8; }
+  .console .l-ok{ color: #7be0a8; }
+  .console .l-err{ color: #ff9a86; }
+  .console .l-dim{ color: #a9bdd8; }
+  .console:empty{ display: none; }
+
+  .outputs{ display: flex; flex-direction: column; gap: 8px; }
+  .outfile{ display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); background: var(--sky); border-radius: 10px; padding: 10px 14px; }
+  .outfile .name{ font-size: 13px; font-weight: 600; color: var(--navy); }
+  .outfile .stats{ font-size: 12px; color: var(--text-dim); margin-left: auto; margin-right: 4px; }
+  .outfile a.dl{
+    font-size: 12.5px; font-weight: 650; color: #fff; background: var(--blue); text-decoration: none;
+    padding: 7px 13px; border-radius: 7px; white-space: nowrap;
+  }
+  .outfile a.dl:hover{ background: var(--blue-dark); }
+  .zip-row{ margin-top: 12px; }
+  .empty-note{ font-size: 13px; color: var(--text-dim); }
+  .actions-row{ display: flex; gap: 10px; align-items: center; }
+
+  /* ---------- about / owner banner ---------- */
+  .about{ padding: 10px 0 70px; }
+  .about-banner{
+    background: var(--navy); border-radius: 20px; padding: 40px 36px;
+    display: flex; align-items: center; gap: 30px; color: #fff;
+    background-image: radial-gradient(60% 120% at 100% 0%, rgba(46,116,224,0.35), transparent 60%);
+  }
+  .avatar{
+    width: 74px; height: 74px; border-radius: 50%; flex-shrink: 0;
+    background: var(--blue); color: #fff; font-family: var(--head); font-weight: 700; font-size: 24px;
+    display: flex; align-items: center; justify-content: center;
+    border: 3px solid rgba(255,255,255,0.15);
+  }
+  .about-text h3{ color: #fff; font-size: 19px; margin-bottom: 4px; }
+  .about-text .role{ color: #9fb6dc; font-size: 13.5px; font-weight: 600; margin-bottom: 10px; }
+  .about-text p{ color: #cfdcef; font-size: 14px; max-width: 56ch; margin: 0 0 10px; line-height: 1.55; }
+  .about-text .contact{ font-size: 13px; color: #7fb0ff; text-decoration: none; font-weight: 600; }
+
+  footer{ text-align: center; padding: 26px 0 40px; font-size: 12.5px; color: var(--text-dim); }
+
+  @media (max-width: 760px){
+    .hero-inner{ flex-direction: column; }
+    .hero-art{ width: 100%; }
+    .how-grid{ grid-template-columns: repeat(2, 1fr); }
+    .navlinks{ display: none; }
+    .about-banner{ flex-direction: column; text-align: center; }
+    .about-text p{ max-width: none; }
+  }
+</style>
+
+<!-- Google AdSense: replace ca-pub-XXXXXXXXXXXXXXXX with your publisher ID once approved -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
+</head>
+<body>
+
+<div id="site-nav"></div>
+
+<div class="ad-slot">
+  <div class="ad-slot-label">Advertisement</div>
+  <div class="ad-slot-body">
+    Top banner ad space (728×90 / responsive)
+  </div>
+</div>
+
+<section class="hero">
+  <div class="container hero-inner">
+    <div class="hero-copy">
+      <h1>Your drone flight logs,<br>ready for <span class="accent">SMART</span>.</h1>
+      <p>Drop in a DJI flight-log CSV and get back a clean GPX track, same column detection and time correction as the field-tested script, now in one click for the whole team.</p>
+      <div class="hero-actions">
+        <a class="btn-primary" href="#tool">Open converter</a>
+        <a class="link-secondary" href="#how">See how it works ⌄</a>
+      </div>
+    </div>
+    <div class="hero-art">
+      <svg viewBox="0 0 360 300" width="100%" height="100%">
+        <path d="M40,230 Q120,150 150,170 T260,90" fill="none" stroke="#2e74e0" stroke-width="2" stroke-dasharray="2 8" stroke-linecap="round"/>
+        <g transform="translate(30,205)">
+          <rect x="-46" y="-30" width="92" height="66" rx="10" fill="#ffffff" stroke="#e1e9f5"/>
+          <rect x="-30" y="-14" width="60" height="34" rx="4" fill="#dcebfc"/>
+          <text x="0" y="8" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#2e74e0" font-weight="700">CSV</text>
+        </g>
+        <g transform="translate(255,75) rotate(-8)">
+          <circle cx="-22" cy="-22" r="9" fill="none" stroke="#10233f" stroke-width="2"/>
+          <circle cx="22" cy="-22" r="9" fill="none" stroke="#10233f" stroke-width="2"/>
+          <circle cx="-22" cy="22" r="9" fill="none" stroke="#10233f" stroke-width="2"/>
+          <circle cx="22" cy="22" r="9" fill="none" stroke="#10233f" stroke-width="2"/>
+          <line x1="-22" y1="-22" x2="-9" y2="-9" stroke="#10233f" stroke-width="2"/>
+          <line x1="22" y1="-22" x2="9" y2="-9" stroke="#10233f" stroke-width="2"/>
+          <line x1="-22" y1="22" x2="-9" y2="9" stroke="#10233f" stroke-width="2"/>
+          <line x1="22" y1="22" x2="9" y2="9" stroke="#10233f" stroke-width="2"/>
+          <rect x="-15" y="-15" width="30" height="30" rx="6" fill="#f2a93b"/>
+        </g>
+        <g transform="translate(300,190)">
+          <circle r="26" fill="#e1f5ea"/>
+          <path d="M-8,2 L-2,9 L10,-8" fill="none" stroke="#2fa671" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+        <circle class="dot" cx="18" cy="30" r="5" fill="#f2a93b" style="position:absolute;"></circle>
+      </svg>
+      <div class="dot" style="width:10px;height:10px;background:#2e74e0;top:14px;left:150px;opacity:.5;"></div>
+      <div class="dot" style="width:7px;height:7px;background:#f2a93b;top:250px;left:110px;opacity:.6;"></div>
+      <div class="dot" style="width:6px;height:6px;background:#2fa671;top:60px;left:60px;opacity:.5;"></div>
+    </div>
+  </div>
+</section>
+
+<section class="how" id="how">
+  <div class="container">
+    <div class="section-head">
+      <h2>How it works</h2>
+      <p>Just four simple steps</p>
+    </div>
+    <div class="how-grid">
+      <div class="how-card">
+        <div class="how-icon" style="background:#dcebfc;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 16V4M12 4L7 9M12 4l5 5" stroke="#2e74e0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3" stroke="#2e74e0" stroke-width="2" stroke-linecap="round"/></svg>
+        </div>
+        <h3>Upload CSV</h3>
+        <p>Drop in one or more DJI flight-log exports.</p>
+      </div>
+      <div class="how-card">
+        <div class="how-icon" style="background:#fdf0da;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="4" y="5" width="16" height="14" rx="2" stroke="#a06a0f" stroke-width="2"/><path d="M4 10h16M9 5v14" stroke="#a06a0f" stroke-width="2"/></svg>
+        </div>
+        <h3>Confirm columns</h3>
+        <p>Latitude, longitude, date and time are detected automatically.</p>
+      </div>
+      <div class="how-card">
+        <div class="how-icon" style="background:#e1f5ea;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3v3M12 18v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M3 12h3M18 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" stroke="#2fa671" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="3.5" stroke="#2fa671" stroke-width="2"/></svg>
+        </div>
+        <h3>Convert</h3>
+        <p>Applies the same PM-hour time correction that made SMART accept the track.</p>
+      </div>
+      <div class="how-card">
+        <div class="how-icon" style="background:#dcebfc;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 4v10M12 14l-4-4M12 14l4-4" stroke="#2e74e0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 17.5C5 19.4 6.6 21 8.5 21h7c1.9 0 3.5-1.6 3.5-3.5" stroke="#2e74e0" stroke-width="2" stroke-linecap="round"/></svg>
+        </div>
+        <h3>Download GPX</h3>
+        <p>Import the finished track straight into SMART.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="tool" id="tool">
+  <div class="container">
+    <div class="tool-shell">
+
+      <div class="tool-head">
+        <h2>Convert a flight log</h2>
+        <span class="status-pill" id="statusPill">No files yet</span>
+      </div>
+
+      <div class="step">
+        <div class="step-title-row">
+          <div class="step-badge">1</div>
+          <div class="step-title">Upload flight log(s)</div>
+          <div class="step-sub" id="fileCount"></div>
+        </div>
+        <div class="dropzone" id="dropzone">
+          <svg class="icon" viewBox="0 0 40 40" fill="none">
+            <rect x="4" y="4" width="32" height="32" rx="8" fill="#dcebfc"/>
+            <path d="M20 26V14M20 14l-5 5M20 14l5 5" stroke="#2e74e0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <div class="big">Drop CSV files here, or click to browse</div>
+          <div class="small">Multiple files supported — each becomes its own GPX</div>
+        </div>
+        <input type="file" id="fileInput" accept=".csv" multiple>
+        <div class="filelist" id="filelist"></div>
+      </div>
+
+      <div class="step">
+        <div class="step-title-row">
+          <div class="step-badge">2</div>
+          <div class="step-title">Check settings</div>
+        </div>
+        <div class="settings-row">
+          <label class="field-label" for="photoColName">Marked / photo column</label>
+          <input type="text" id="photoColName" value="isPhoto">
+        </div>
+        <div class="settings-row" style="margin-top:-8px;">
+          <span style="width:190px;flex-shrink:0;"></span>
+          <span class="hint">Rows where this column reads 1, true, or yes become waypoints. Leave blank to skip waypoints entirely.</span>
+        </div>
+        <div class="toggle-row" style="margin-top:16px;">
+          <input type="checkbox" id="pmCorrection" checked>
+          <div class="toggle-text">
+            Apply PM correction
+            <div class="hint">Adds 12 hours whenever the logged hour is 11 or earlier. This is the fix that made SMART accept the timestamps — turn it off only if a log turns out not to need it.</div>
+          </div>
+        </div>
+        <div class="toggle-row" style="margin-top:16px;">
+          <input type="checkbox" id="skipFirstLine" checked>
+          <div class="toggle-text">
+            First line of the CSV is a metadata row
+            <div class="hint">DJI logs usually start with a "sep=" line before the real header. Uncheck this if a file's first line is already the column header.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-title-row">
+          <div class="step-badge">3</div>
+          <div class="step-title">Review columns &amp; convert</div>
+        </div>
+        <div id="mappingArea"><p class="empty-note">Upload a CSV above to see detected columns here.</p></div>
+        <div class="actions-row" style="margin-top:16px;">
+          <button class="primary" id="convertBtn" disabled>Convert</button>
+          <button class="secondary" id="resetBtn">Reset</button>
+        </div>
+        <div class="console" id="consoleBox"></div>
+      </div>
+
+      <div class="step" id="outputStep" style="display:none;">
+        <div class="step-title-row">
+          <div class="step-badge">4</div>
+          <div class="step-title">Download</div>
+        </div>
+        <div class="outputs" id="outputsList"></div>
+        <div class="zip-row" id="zipRow" style="display:none;">
+          <button class="secondary" id="zipBtn">Download all as .zip</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section class="about" id="about">
+  <div class="container">
+    <div class="about-banner">
+      <div class="avatar">RR</div>
+      <div class="about-text">
+        <h3>Ramzie Rosli</h3>
+        <div class="role">Conservation Tech Enthusiast</div>
+        <p>Built as a personal project to solve a real field workflow headache, converting raw DJI drone log data directly into GPX formats ready for SMART integration.</p>
+
+        <!-- Links container stacked vertically -->
+        <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 10px;">
+          <a class="contact" href="mailto:ramzierosli14@gmail.com">ramzierosli14@gmail.com</a>
+
+          <a href="https://www.linkedin.com/in/ramzie-rosli/" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 5px; background-color: #0a66c2; color: #ffffff; padding: 4px 10px; border-radius: 4px; font-size: 0.8rem; font-weight: 500; text-decoration: none;">
+            <svg viewBox="0 0 24 24" aria-hidden="true" style="width: 14px; height: 14px; flex-shrink: 0;">
+              <path fill="currentColor" d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 10.9v8.37H9.25V10.9H6.46M7.86 6.74a1.45 1.45 0 1 0 0 2.9 1.45 1.45 0 0 0 0-2.9z"/>
+            </svg>
+            <span>Connect on LinkedIn</span>
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>Built independently for community support. Free for all conservationists</footer>
+
+<div id="site-footer"></div>
+
+<script>
+  window.SITE_ROOT = "../";
+  window.SITE_PAGE = "csv-to-gpx";
+</script>
+<script src="../assets/nav.js"></script>
+<script src="../assets/usage-tracking.js"></script>
+
+<script>
+(function(){
+  const REQUIRED_FIELDS = ["lat","lon","date","time"];
+  const AUTO_KEYWORDS = {
+    lat:  ["osd.latitude", "latitude", "lat"],
+    lon:  ["osd.longitude", "longitude", "lon"],
+    date: ["custom.date", "date"],
+    time: ["custom.updatetime", "time"]
+  };
+
+  let files = []; // {id, file, name, headers, rows, mapping:{lat,lon,date,time}, gpx, stats}
+  let idCounter = 0;
+
+  const el = (id) => document.getElementById(id);
+  const dropzone = el("dropzone");
+  const fileInput = el("fileInput");
+  const filelistEl = el("filelist");
+  const fileCountEl = el("fileCount");
+  const mappingArea = el("mappingArea");
+  const convertBtn = el("convertBtn");
+  const resetBtn = el("resetBtn");
+  const consoleBox = el("consoleBox");
+  const outputStep = el("outputStep");
+  const outputsList = el("outputsList");
+  const zipRow = el("zipRow");
+  const zipBtn = el("zipBtn");
+  const photoColInput = el("photoColName");
+  const statusPill = el("statusPill");
+
+  dropzone.addEventListener("click", () => fileInput.click());
+  ["dragenter","dragover"].forEach(evt =>
+    dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.add("drag"); })
+  );
+  ["dragleave","drop"].forEach(evt =>
+    dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.remove("drag"); })
+  );
+  dropzone.addEventListener("drop", (e) => {
+    if (e.dataTransfer.files && e.dataTransfer.files.length) handleNewFiles(e.dataTransfer.files);
+  });
+  fileInput.addEventListener("change", (e) => {
+    if (e.target.files && e.target.files.length) handleNewFiles(e.target.files);
+    fileInput.value = "";
+  });
+  resetBtn.addEventListener("click", () => {
+    files = [];
+    outputStep.style.display = "none";
+    consoleBox.innerHTML = "";
+    outputsList.innerHTML = "";
+    render();
+  });
+
+  function cleanName(s){
+    return String(s).toLowerCase().split("[").join("").split("]").join("").split(" ").join("").split(".").join("");
+  }
+  function cleanKey(s){
+    return String(s).toLowerCase().split(".").join("");
+  }
+  function autoDetect(headers){
+    const mapping = {};
+    for (const field of REQUIRED_FIELDS){
+      const keywords = AUTO_KEYWORDS[field];
+      let found = null;
+      for (const col of headers){
+        const cn = cleanName(col);
+        if (keywords.some(k => cn.includes(cleanKey(k)))){ found = col; break; }
+      }
+      mapping[field] = found;
+    }
+    return mapping;
+  }
+
+  function handleNewFiles(fileList){
+    Array.from(fileList).forEach(file => {
+      const id = ++idCounter;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target.result;
+        const entry = { id, file, name: file.name, rawText: text, headers: [], rows: [], mapping: {}, gpx: null, stats: null };
+        files.push(entry);
+        parseEntry(entry);
+        render();
+      };
+      reader.readAsText(file);
+    });
+  }
+
+  function parseEntry(entry){
+    const skipFirst = el("skipFirstLine").checked;
+    let text = entry.rawText;
+    if (skipFirst){
+      const idx = text.search(/\r\n|\r|\n/);
+      text = idx >= 0 ? text.slice(idx + (text[idx] === "\r" && text[idx+1] === "\n" ? 2 : 1)) : "";
+    }
+    const parsed = Papa.parse(text, { header: true, skipEmptyLines: true, dynamicTyping: false });
+    entry.headers = parsed.meta.fields || [];
+    entry.rows = parsed.data || [];
+    entry.mapping = autoDetect(entry.headers);
+  }
+
+  function reparseAll(){
+    files.forEach(parseEntry);
+    render();
+  }
+  el("skipFirstLine").addEventListener("change", reparseAll);
+
+  function removeFile(id){
+    files = files.filter(f => f.id !== id);
+    render();
+  }
+
+  function setStatus(text, cls){
+    statusPill.textContent = text;
+    statusPill.className = "status-pill" + (cls ? " " + cls : "");
+  }
+
+  function render(){
+    fileCountEl.textContent = files.length ? `${files.length} file${files.length > 1 ? "s" : ""}` : "";
+
+    if (!files.length){
+      filelistEl.innerHTML = "";
+      mappingArea.innerHTML = '<p class="empty-note">Upload a CSV above to see detected columns here.</p>';
+      convertBtn.disabled = true;
+      setStatus("No files yet");
+      return;
+    }
+
+    filelistEl.innerHTML = "";
+    files.forEach(f => {
+      const card = document.createElement("div");
+      card.className = "filecard";
+      const row = document.createElement("div");
+      row.className = "filecard-row";
+      const nm = document.createElement("div");
+      nm.className = "filecard-name";
+      nm.textContent = f.name;
+      const meta = document.createElement("div");
+      meta.className = "filecard-meta";
+      meta.textContent = `${f.rows.length.toLocaleString()} rows`;
+      const rm = document.createElement("button");
+      rm.className = "filecard-remove";
+      rm.textContent = "\u2715";
+      rm.title = "Remove";
+      rm.addEventListener("click", () => removeFile(f.id));
+      row.appendChild(nm);
+      row.appendChild(meta);
+      row.appendChild(rm);
+      card.appendChild(row);
+      filelistEl.appendChild(card);
+    });
+
+    mappingArea.innerHTML = "";
+    files.forEach(f => mappingArea.appendChild(buildMappingCard(f)));
+
+    const allMapped = files.every(f => REQUIRED_FIELDS.every(field => f.mapping[field]));
+    convertBtn.disabled = !allMapped;
+    setStatus(allMapped ? "Ready to convert" : "Needs column input", allMapped ? "ready" : "warn");
+  }
+
+  function buildMappingCard(entry){
+    const wrap = document.createElement("div");
+    wrap.className = "filecard";
+    wrap.style.marginBottom = "10px";
+
+    const title = document.createElement("div");
+    title.className = "filecard-name";
+    title.textContent = entry.name;
+    wrap.appendChild(title);
+
+    const grid = document.createElement("div");
+    grid.className = "mapgrid";
+
+    const fieldLabels = { lat: "Latitude", lon: "Longitude", date: "Date", time: "Time" };
+    let anyMissing = false;
+
+    REQUIRED_FIELDS.forEach(field => {
+      const label = document.createElement("label");
+      label.textContent = fieldLabels[field];
+      const select = document.createElement("select");
+      if (!entry.mapping[field]) select.classList.add("missing");
+
+      const noneOpt = document.createElement("option");
+      noneOpt.value = "";
+      noneOpt.textContent = "— not found —";
+      select.appendChild(noneOpt);
+
+      entry.headers.forEach(h => {
+        const opt = document.createElement("option");
+        opt.value = h;
+        opt.textContent = h;
+        if (entry.mapping[field] === h) opt.selected = true;
+        select.appendChild(opt);
+      });
+
+      select.addEventListener("change", () => {
+        entry.mapping[field] = select.value || null;
+        select.classList.toggle("missing", !select.value);
+        render();
+      });
+
+      if (!entry.mapping[field]) anyMissing = true;
+
+      grid.appendChild(label);
+      grid.appendChild(select);
+    });
+
+    if (anyMissing){
+      const warn = document.createElement("div");
+      warn.className = "warn-inline";
+      warn.textContent = "Pick the matching column above before converting this file.";
+      grid.appendChild(warn);
+    }
+
+    wrap.appendChild(grid);
+    return wrap;
+  }
+
+  function nowStamp(){
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, "0");
+    return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  }
+
+  function log(msg, cls){
+    const line = document.createElement("div");
+    const ts = document.createElement("span");
+    ts.className = "ts";
+    ts.textContent = `[${nowStamp()}] `;
+    line.appendChild(ts);
+    const body = document.createElement("span");
+    if (cls) body.className = cls;
+    body.textContent = msg;
+    line.appendChild(body);
+    consoleBox.appendChild(line);
+    consoleBox.scrollTop = consoleBox.scrollHeight;
+  }
+
+  function pad(n){ return String(n).padStart(2, "0"); }
+
+  function parseDateTimeLocal(dateStr, timeStr){
+    if (!dateStr || !timeStr) return null;
+    const dParts = String(dateStr).trim().split(/[-/]/).map(s => parseInt(s, 10));
+    if (dParts.length < 3 || dParts.some(isNaN)) return null;
+    let y, m, d;
+    if (dParts[0] > 31){ y = dParts[0]; m = dParts[1]; d = dParts[2]; }
+    else if (dParts[2] > 31){ y = dParts[2]; m = dParts[0]; d = dParts[1]; }
+    else { y = dParts[0]; m = dParts[1]; d = dParts[2]; }
+
+    const tMatch = String(timeStr).trim().match(/^(\d{1,2}):(\d{1,2}):(\d{1,2})/);
+    if (!tMatch) return null;
+    const h = parseInt(tMatch[1], 10), mi = parseInt(tMatch[2], 10), s = parseInt(tMatch[3], 10);
+    if ([y, m, d, h, mi, s].some(isNaN)) return null;
+
+    const dt = new Date(y, m - 1, d, h, mi, s, 0);
+    if (isNaN(dt.getTime())) return null;
+    return dt;
+  }
+
+  function formatGpxTime(dt){
+    return `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}:${pad(dt.getSeconds())}Z`;
+  }
+
+  function escapeXml(s){
+    return String(s)
+      .split("&").join("&amp;")
+      .split("<").join("&lt;")
+      .split(">").join("&gt;")
+      .split('"').join("&quot;")
+      .split("'").join("&apos;");
+  }
+
+  const MARKED_VALUES = new Set(["1", "true", "yes"]);
+
+  function convertEntry(entry, applyPm, photoColName){
+    const { lat: latCol, lon: lonCol, date: dateCol, time: timeCol } = entry.mapping;
+    let photoCol = null;
+    if (photoColName){
+      photoCol = entry.headers.find(h => cleanName(h).includes(cleanKey(photoColName))) || null;
+    }
+
+    const trackPoints = [];
+    const waypoints = [];
+    let skipped = 0;
+    let waypointCount = 0;
+
+    for (const row of entry.rows){
+      const dt = parseDateTimeLocal(row[dateCol], row[timeCol]);
+      if (!dt){ skipped++; continue; }
+      if (applyPm && dt.getHours() <= 11){ dt.setHours(dt.getHours() + 12); }
+
+      const lat = parseFloat(row[latCol]);
+      const lon = parseFloat(row[lonCol]);
+      if (isNaN(lat) || isNaN(lon)){ skipped++; continue; }
+      if (lat === 0 && lon === 0){ skipped++; continue; }
+
+      const timeStr = formatGpxTime(dt);
+      trackPoints.push({ lat, lon, time: timeStr });
+
+      if (photoCol){
+        const raw = row[photoCol];
+        const norm = raw === undefined || raw === null ? "" : String(raw).trim().toLowerCase();
+        if (MARKED_VALUES.has(norm)){
+          waypointCount++;
+          waypoints.push({
+            lat, lon, time: timeStr,
+            name: `MARK_${waypointCount}`,
+            desc: `Observation marked at ${pad(dt.getHours())}:${pad(dt.getMinutes())}:${pad(dt.getSeconds())}`
+          });
+        }
+      }
+    }
+
+    const wptXml = waypoints.map(w =>
+      `  <wpt lat="${w.lat}" lon="${w.lon}">\n    <time>${w.time}</time>\n    <name>${escapeXml(w.name)}</name>\n    <desc>${escapeXml(w.desc)}</desc>\n  </wpt>`
+    ).join("\n");
+    const trkptXml = trackPoints.map(p =>
+      `      <trkpt lat="${p.lat}" lon="${p.lon}"><time>${p.time}</time></trkpt>`
+    ).join("\n");
+    const gpx = `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Drone Track Converter" xmlns="http://www.topografix.com/GPX/1/1">\n${wptXml ? wptXml + "\n" : ""}  <trk>\n    <name>Drone Flight Path</name>\n    <trkseg>\n${trkptXml}\n    </trkseg>\n  </trk>\n</gpx>\n`;
+
+    return {
+      gpx,
+      stats: { total: entry.rows.length, valid: trackPoints.length, waypoints: waypointCount, skipped }
+    };
+  }
+
+  convertBtn.addEventListener("click", () => {
+    consoleBox.innerHTML = "";
+    outputsList.innerHTML = "";
+    outputStep.style.display = "none";
+    zipRow.style.display = "none";
+    setStatus("Converting…");
+
+    const applyPm = el("pmCorrection").checked;
+    const photoColName = photoColInput.value.trim();
+
+    let anyOutput = false;
+    files.forEach(entry => {
+      log(`converting ${entry.name} ...`, "l-dim");
+      try {
+        const result = convertEntry(entry, applyPm, photoColName);
+        entry.gpx = result.gpx;
+        entry.stats = result.stats;
+        if (result.stats.valid > 0){
+          log(`  done — ${result.stats.valid} points, ${result.stats.waypoints} waypoints, ${result.stats.skipped} rows skipped`, "l-ok");
+          anyOutput = true;
+        } else {
+          log(`  no usable points found — check the column mapping above`, "l-err");
+        }
+      } catch (err){
+        log(`  failed: ${err.message}`, "l-err");
+      }
+    });
+
+    setStatus(anyOutput ? "Done" : "Conversion failed", anyOutput ? "ready" : "err");
+
+    if (anyOutput){
+      outputStep.style.display = "";
+      files.filter(f => f.stats && f.stats.valid > 0).forEach(f => outputsList.appendChild(buildOutputRow(f)));
+      if (files.filter(f => f.gpx).length > 1) zipRow.style.display = "";
+    }
+  });
+
+  function outFileName(entry){
+    return entry.name.replace(/\.csv$/i, "") + ".gpx";
+  }
+
+  function buildOutputRow(entry){
+    const row = document.createElement("div");
+    row.className = "outfile";
+
+    const name = document.createElement("div");
+    name.className = "name";
+    name.textContent = outFileName(entry);
+
+    const stats = document.createElement("div");
+    stats.className = "stats";
+    stats.textContent = `${entry.stats.valid} pts · ${entry.stats.waypoints} marks`;
+
+    const link = document.createElement("a");
+    link.className = "dl";
+    link.textContent = "Download";
+    link.href = URL.createObjectURL(new Blob([entry.gpx], { type: "application/gpx+xml" }));
+    link.download = outFileName(entry);
+
+    row.appendChild(name);
+    row.appendChild(stats);
+    row.appendChild(link);
+    return row;
+  }
+
+  zipBtn.addEventListener("click", async () => {
+    const zip = new JSZip();
+    files.filter(f => f.gpx).forEach(f => zip.file(outFileName(f), f.gpx));
+    const blob = await zip.generateAsync({ type: "blob" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "drone_tracks_gpx.zip";
+    a.click();
+  });
+
+  render();
+})();
+</script>
+
+<script data-name="BMC-Widget" 
+        data-cfasync="false" 
+        src="https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js" 
+        data-id="YOUR_USERNAME" 
+        data-description="Support me on Buy me a coffee!" 
+        data-message="Thank you for visiting! Support this free tool." 
+        data-color="#5F7D95" 
+        data-position="Right" 
+        data-x_margin="18" 
+        data-y_margin="18">
+</script>
+
+</body>
+</html>
